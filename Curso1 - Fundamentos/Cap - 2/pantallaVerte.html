@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pantalla Verde - Versión Didáctica (Sin Imágenes Externas)</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        text-align: center;
+        background: #1a1a2e;
+        color: #eee;
+        margin: 20px;
+      }
+      canvas {
+        border: 3px solid #e94560;
+        margin: 15px;
+        max-width: 95%;
+      }
+      .container {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: flex-start;
+        gap: 25px;
+      }
+      button {
+        padding: 12px 28px;
+        font-size: 1.1rem;
+        background: #e94560;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        margin: 15px;
+        transition: background 0.3s;
+      }
+      button:hover {
+        background: #c23152;
+      }
+      .info {
+        background: #16213e;
+        padding: 12px 20px;
+        border-radius: 8px;
+        display: inline-block;
+        margin: 10px auto;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🎬 Algoritmo de Pantalla Verde (Chroma Key)</h1>
+    <p class="info">
+      <strong>Principio:</strong> Todo es un número. Cada píxel = [R, G, B]
+      (0-255).
+    </p>
+
+    <button id="btnEjecutar">▶️ Ejecutar Algoritmo</button>
+
+    <div class="container">
+      <div>
+        <h3>Imagen Original (con "verde croma")</h3>
+        <canvas id="canvasOriginal"></canvas>
+      </div>
+      <div>
+        <h3>Imagen de Fondo (espacio)</h3>
+        <canvas id="canvasFondo"></canvas>
+      </div>
+      <div>
+        <h3>Resultado Compuesto</h3>
+        <canvas id="canvasResultado"></canvas>
+      </div>
+    </div>
+
+    <script>
+      // ==========================================
+      // VERSIÓN DIDÁCTICA Y DETALLADA
+      // No requiere imágenes externas. Dibujamos todo con código.
+      // ==========================================
+
+      // Esperamos a que el DOM (la estructura HTML) esté lista.
+      document.addEventListener("DOMContentLoaded", function () {
+        // --- OBTENCIÓN DE REFERENCIAS A LOS LIENZOS (CANVAS) ---
+        const canvasOriginal = document.getElementById("canvasOriginal");
+        const ctxOriginal = canvasOriginal.getContext("2d");
+
+        const canvasFondo = document.getElementById("canvasFondo");
+        const ctxFondo = canvasFondo.getContext("2d");
+
+        const canvasResultado = document.getElementById("canvasResultado");
+        const ctxResultado = canvasResultado.getContext("2d");
+
+        const btn = document.getElementById("btnEjecutar");
+
+        // --- CONFIGURACIÓN DE DIMENSIONES (todas iguales) ---
+        const ANCHO = 400;
+        const ALTO = 300;
+        canvasOriginal.width = ANCHO;
+        canvasOriginal.height = ALTO;
+        canvasFondo.width = ANCHO;
+        canvasFondo.height = ALTO;
+        canvasResultado.width = ANCHO;
+        canvasResultado.height = ALTO;
+
+        // ==========================================
+        // 1. DIBUJAR LA IMAGEN ORIGINAL (con "verde croma")
+        // ==========================================
+        function dibujarOriginal() {
+          // Fondo verde croma (el que será reemplazado)
+          ctxOriginal.fillStyle = "#00FF00"; // Verde puro (R=0, G=255, B=0)
+          ctxOriginal.fillRect(0, 0, ANCHO, ALTO);
+
+          // Un círculo rojo (representa al presentador, NO verde)
+          ctxOriginal.beginPath();
+          ctxOriginal.arc(200, 150, 80, 0, Math.PI * 2);
+          ctxOriginal.fillStyle = "#FF0000"; // Rojo puro (R=255, G=0, B=0)
+          ctxOriginal.fill();
+
+          // Un rectángulo azul (otro objeto no verde)
+          ctxOriginal.fillStyle = "#0000FF"; // Azul puro (R=0, G=0, B=255)
+          ctxOriginal.fillRect(50, 200, 100, 60);
+
+          // Un rectángulo amarillo (amarillo = R+255, G=255, B=0)
+          // CUIDADO: Amarillo tiene componente verde ALTO (255). Dependiendo del umbral, ¡podría reemplazarse!
+          ctxOriginal.fillStyle = "#FFFF00"; // Amarillo
+          ctxOriginal.fillRect(280, 50, 80, 80);
+        }
+
+        // ==========================================
+        // 2. DIBUJAR LA IMAGEN DE FONDO (espacio estrellado)
+        // ==========================================
+        function dibujarFondo() {
+          // Fondo negro (espacio)
+          ctxFondo.fillStyle = "#0a0a2e";
+          ctxFondo.fillRect(0, 0, ANCHO, ALTO);
+
+          // Pequeños círculos blancos como estrellas
+          ctxFondo.fillStyle = "#FFFFFF";
+          for (let i = 0; i < 80; i++) {
+            const x = Math.random() * ANCHO;
+            const y = Math.random() * ALTO;
+            const radio = Math.random() * 2 + 0.5;
+            ctxFondo.beginPath();
+            ctxFondo.arc(x, y, radio, 0, Math.PI * 2);
+            ctxFondo.fill();
+          }
+
+          // Una nebulosa púrpura semi-transparente
+          const gradiente = ctxFondo.createRadialGradient(
+            300,
+            100,
+            10,
+            280,
+            120,
+            150,
+          );
+          gradiente.addColorStop(0, "rgba(255, 0, 255, 0.6)");
+          gradiente.addColorStop(1, "rgba(255, 0, 255, 0)");
+          ctxFondo.fillStyle = gradiente;
+          ctxFondo.fillRect(0, 0, ANCHO, ALTO);
+        }
+
+        // ==========================================
+        // 3. EL ALGORITMO DE PANTALLA VERDE (CHROMA KEY)
+        // ==========================================
+        function ejecutarAlgoritmo() {
+          // 3.1 Obtener los arrays de píxeles de ambos canvas
+          // getImageData devuelve un objeto ImageData con una propiedad .data
+          // .data es un Uint8ClampedArray unidimensional con el formato:
+          // [R_pixel0, G_pixel0, B_pixel0, A_pixel0, R_pixel1, G_pixel1, B_pixel1, A_pixel1, ...]
+          const imageDataOriginal = ctxOriginal.getImageData(0, 0, ANCHO, ALTO);
+          const pixelesOriginal = imageDataOriginal.data; // Array con TODOS los píxeles
+
+          const imageDataFondo = ctxFondo.getImageData(0, 0, ANCHO, ALTO);
+          const pixelesFondo = imageDataFondo.data;
+
+          // 3.2 Crear un NUEVO array para el resultado (partiendo del original)
+          // Esto es importante: así no modificamos el canvas original.
+          const imageDataResultado = new ImageData(ANCHO, ALTO);
+          const pixelesResultado = imageDataResultado.data;
+
+          console.log(
+            "🚀 Iniciando algoritmo... Total de posiciones a recorrer:",
+            pixelesOriginal.length,
+          );
+          let pixelesReemplazados = 0;
+          let pixelesMantenidos = 0;
+
+          // 3.3 RECORRER CADA PÍXEL
+          // El array tiene 4 posiciones por píxel (R, G, B, Alpha).
+          // Por lo tanto, saltamos de 4 en 4.
+          for (let i = 0; i < pixelesOriginal.length; i += 4) {
+            // --- LECTURA DEL PÍXEL ORIGINAL ---
+            const rOriginal = pixelesOriginal[i]; // Rojo (0-255)
+            const gOriginal = pixelesOriginal[i + 1]; // Verde (0-255)
+            const bOriginal = pixelesOriginal[i + 2]; // Azul (0-255)
+            const aOriginal = pixelesOriginal[i + 3]; // Alpha (0-255, transparencia)
+
+            // --- LÓGICA DE DECISIÓN: ¿Es verde croma? ---
+            // Definimos un UMBRAL: el verde debe ser "mucho mayor" que el rojo y que el azul.
+            // Condición: Verde > Rojo + 50  Y  Verde > Azul + 50
+            // Siendo verde PURO (0,255,0): 255 > 0+50 (50) ✓ y 255 > 0+50 (50) ✓ -> Es verde.
+            // Siendo amarillo (255,255,0): 255 > 255+50 (305) ✗ -> NO es verde.
+            // Siendo blanco (255,255,255): 255 > 305 ✗ -> NO es verde.
+            const esVerdeCroma =
+              gOriginal > rOriginal + 50 && gOriginal > bOriginal + 50;
+
+            if (esVerdeCroma) {
+              // --- SUSTITUIR: Copiar los valores del fondo ---
+              pixelesResultado[i] = pixelesFondo[i]; // R del fondo
+              pixelesResultado[i + 1] = pixelesFondo[i + 1]; // G del fondo
+              pixelesResultado[i + 2] = pixelesFondo[i + 2]; // B del fondo
+              pixelesResultado[i + 3] = 255; // Alpha siempre opaco
+              pixelesReemplazados++;
+            } else {
+              // --- MANTENER: Conservar el píxel original ---
+              pixelesResultado[i] = rOriginal;
+              pixelesResultado[i + 1] = gOriginal;
+              pixelesResultado[i + 2] = bOriginal;
+              pixelesResultado[i + 3] = 255;
+              pixelesMantenidos++;
+            }
+          }
+
+          // 3.4 VOLCAR LOS DATOS DEL RESULTADO AL CANVAS DE SALIDA
+          // putImageData "pinta" nuestro array de píxeles modificado en el canvas.
+          ctxResultado.putImageData(imageDataResultado, 0, 0);
+
+          // 3.5 Mostrar estadísticas en consola
+          console.log("✅ Algoritmo completado.");
+          console.log(
+            `   🔄 Píxeles REEMPLAZADOS (eran verde): ${pixelesReemplazados}`,
+          );
+          console.log(
+            `   ✔️ Píxeles MANTENIDOS (no eran verde): ${pixelesMantenidos}`,
+          );
+          console.log(
+            "💡 Observa el cuadrado amarillo. Dependiendo del umbral, podría desaparecer parcial o totalmente.",
+          );
+          console.log(
+            "   Esto pasa porque el amarillo (255,255,0) tiene componente verde alto (255).",
+          );
+          console.log(
+            "   En producción se usan técnicas más avanzadas (HSL, diferencia de matiz) para evitar esto.",
+          );
+        }
+
+        // ==========================================
+        // 4. INICIALIZACIÓN Y EVENTO DEL BOTÓN
+        // ==========================================
+        dibujarOriginal();
+        dibujarFondo();
+        // Limpiamos el canvas de resultado inicialmente
+        ctxResultado.clearRect(0, 0, ANCHO, ALTO);
+        ctxResultado.fillStyle = "#333";
+        ctxResultado.fillRect(0, 0, ANCHO, ALTO);
+        ctxResultado.fillStyle = "#aaa";
+        ctxResultado.font = "16px Arial";
+        ctxResultado.textAlign = "center";
+        ctxResultado.fillText(
+          "Presiona el botón para ejecutar",
+          ANCHO / 2,
+          ALTO / 2,
+        );
+
+        btn.addEventListener("click", ejecutarAlgoritmo);
+
+        console.log(
+          '🟢 Listo. Todo dibujado. Presiona el botón "Ejecutar Algoritmo".',
+        );
+      });
+    </script>
+  </body>
+</html>
