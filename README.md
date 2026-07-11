@@ -1,6 +1,6 @@
 ##
 
-## Repo de Prorama especializado: Fundamentos de programación Java e ingeniería de software
+## Repo de Programa especializado: Fundamentos de programación Java e ingeniería de software
 
 ##
 
